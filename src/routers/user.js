@@ -19,24 +19,37 @@ router.post('/users/login', async (req,res)=>{
     try{
         const user = await User.findByCredentials(req.body.email,req.body.password)
         const token = await user.generateAuthToken()
-        res.send({user,token})
+        res.send({user,token}).status(201)
     }
     catch(e){
         res.status(500).send(e)
     }
 })
 
-router.get('/users/me', auth, async (req, res) => {
-    res.send(req.user)
-})
-
-router.get('/users', async (req, res) => {
-    try {
-        const user = await User.findById()
-        res.send(user)
-    } catch (e) {
+router.post("/users/logout" ,auth,async(req,res)=>{
+    try{
+        req.user.tokens = req.user.tokens.filter((token)=>{
+            return token.token!==req.token
+        })
+        await req.user.save()
+        res.send("Logged out successfully")
+    }catch(e){
         res.status(500).send()
     }
+} )
+
+router.post("/users/logoutAll",auth,async(req,res)=>{
+    try{
+        req.user.tokens=[]
+        await req.user.save()
+        res.send()
+    }catch(e){
+        res.status(500).send()
+    }
+})
+
+router.get('/users/me', auth, async (req, res) => {
+    res.send(req.user)
 })
 
 router.patch('/users/:id', async (req, res) => {
@@ -64,9 +77,10 @@ router.patch('/users/:id', async (req, res) => {
     }
 })
 
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/me', auth, async (req, res) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id)
+        const user = req.user
+        console.log(user)
 
         if (!user) {
             return res.status(404).send()
